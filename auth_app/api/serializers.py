@@ -34,12 +34,12 @@ class RegistrationSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(
             username=self.validated_data['email'],
             email=self.validated_data['email'],
-            password=self.validated_data['password'],
+            password=validated_data['password'],
         )
 
         UserProfile.objects.create(
             user=user,
-            fullname=self.validated_data['fullname']
+            fullname=validated_data['fullname']
         )
         return user
 
