@@ -24,3 +24,22 @@ class TaskSerializer(serializers.ModelSerializer):
         model = Task
         fields = ['id', 'board', 'title', 'description', 'status',
                   'priority', 'assignee', 'reviewer', 'due_date']
+
+
+class TaskUpdateSerializer(serializers.ModelSerializer):
+    assignee_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        source='assignee',
+        required=False
+    )
+
+    reviewer_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        source='reviewer',
+        required=False
+    )
+
+    class Meta:
+        model = Task
+        fields = ['title', 'description', 'status', 'priority',
+                  'assignee_id', 'reviewer_id', 'due_date']
