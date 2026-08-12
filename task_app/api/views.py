@@ -5,7 +5,8 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from board_app.models import Board
-from .serializers import TaskCreateSerializer, TaskSerializer
+from task_app.models import Task
+from .serializers import TaskCreateSerializer, TaskSerializer, TaskUpdateSerializer
 
 
 class TaskCreateView(generics.CreateAPIView):
@@ -20,7 +21,7 @@ class TaskCreateView(generics.CreateAPIView):
             raise PermissionDenied(
                 "You do not have permission to create a task in this board.")
 
-        return serializer.save()
+        return serializer.save(created_by=self.request.user)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -31,3 +32,22 @@ class TaskCreateView(generics.CreateAPIView):
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 
+class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TaskUpdateSerializer
+
+    def get_queryset(self):
+        return Task.objects.filter(
+            Q(board__owner=self.request.user) |
+            Q(board__members=self.request.uer)
+        ).distinct()
+
+    def destroy(self, request, *args, **kwargs):
+        task = self.get_object()
+
+        if task.created_by != request.user and task.board.owner != request.user:
+            raise PermissionDenied(
+                "Only the task creator or board owner can delete this task."
+            )
+
+        return super().destroy(request, *args, **kwargs)
