@@ -42,6 +42,24 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
             Q(board__members=self.request.user)
         ).distinct()
 
+    def partial_update(self, request, *args, **kwargs):
+        task = self.get_object()
+
+        serializer = self.get_serializer(
+            task,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        task = serializer.save()
+
+        response_serializer = TaskSerializer(task)
+
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_200_OK
+        )
+
     def destroy(self, request, *args, **kwargs):
         task = self.get_object()
 
