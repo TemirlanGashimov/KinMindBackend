@@ -39,7 +39,7 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return Task.objects.filter(
             Q(board__owner=self.request.user) |
-            Q(board__members=self.request.uer)
+            Q(board__members=self.request.user)
         ).distinct()
 
     def destroy(self, request, *args, **kwargs):
