@@ -69,3 +69,13 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
             )
 
         return super().destroy(request, *args, **kwargs)
+
+
+class AssignedToMeView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TaskSerializer
+
+    def get_queryset(self):
+        return Task.objects.filter(
+            assignee=self.request.user
+        )
