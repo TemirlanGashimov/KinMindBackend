@@ -79,3 +79,12 @@ class AssignedToMeView(generics.ListAPIView):
         return Task.objects.filter(
             assignee=self.request.user
         )
+
+class ReviewingView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TaskSerializer
+
+    def get_queryset(self):
+        return Task.objects.filter(
+            reviewer=self.request.user
+        )
