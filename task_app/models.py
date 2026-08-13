@@ -36,7 +36,17 @@ class Task(models.Model):
         User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_tasks')
     due_date = models.DateField(null=True, blank=True)
 
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_tasks')
+    created_by = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='created_tasks')
 
     def __str__(self):
         return self.title
+
+
+class Comment(models.Model):
+    task = models.ForeignKey(
+        Task, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='comments')
+    content = models.TextField(blank=False)
+    created_at = models.DateTimeField(auto_now_add=True)
