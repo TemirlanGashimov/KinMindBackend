@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from task_app.models import Task
+from task_app.models import Task, Comment
 from board_app.api.serializers import BoardMemberSerializer
 
 
@@ -43,3 +43,14 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
         model = Task
         fields = ['title', 'description', 'status', 'priority',
                   'assignee_id', 'reviewer_id', 'due_date']
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    author = serializers.CharField(
+        source='author.profile.fullname',
+        read_only=True
+    )
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'created_at', 'author', 'content']
