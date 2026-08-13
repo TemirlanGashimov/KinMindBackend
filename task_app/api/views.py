@@ -5,8 +5,8 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from board_app.models import Board
-from task_app.models import Task
-from .serializers import TaskCreateSerializer, TaskSerializer, TaskUpdateSerializer
+from task_app.models import Task, Comment
+from .serializers import TaskCreateSerializer, TaskSerializer, TaskUpdateSerializer, CommentSerializer
 
 
 class TaskCreateView(generics.CreateAPIView):
@@ -80,6 +80,7 @@ class AssignedToMeView(generics.ListAPIView):
             assignee=self.request.user
         )
 
+
 class ReviewingView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = TaskSerializer
@@ -88,3 +89,61 @@ class ReviewingView(generics.ListAPIView):
         return Task.objects.filter(
             reviewer=self.request.user
         )
+
+
+class CommentListCreateAPIView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CommentSerializer
+
+    def get_queryset(self):
+        task_id = self.kwargs['task_id']
+
+        task = Task.objects.filter(
+            Q(id=task_id),
+            Q(board__owner=self.request.user) |
+            Q(board__members=self.request.user)
+        ).first()
+
+        if not task:
+            return Comment.objects.none()
+
+        return Comment.objects.filter(task=task)
+
+    def perform_create(self, serializer):
+        task_id = self.kwargs['task_id']
+
+        task = Task.objects.filter(
+            Q(id=task_id),
+            Q(board__owner=self.request.user) |
+            Q(board__members=self.request.user)
+        ).first()
+
+        if not task:
+            raise PermissionDenied()
+
+        serializer.save(
+            task=task,
+            author=self.request.user
+        )
+
+
+class CommentDeleteView(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CommentSerializer
+    lookup_url_kwarg = 'comment_id'
+
+    def get_queryset(self):
+        task_id = self.kwargs['task_id']
+
+        return Comment.objects.filter(
+            task_id=task_id)
+
+    def destroy(self, request, *args, **kwargs):
+        comment = self.get_object()
+
+        if comment.author != request.user:
+            raise PermissionDenied(
+                "Only the comment author can delete this comment."
+            )
+
+        return super().destroy(request, *args, **kwargs)
