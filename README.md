@@ -24,7 +24,8 @@ The backend is built with Django and Django REST Framework and provides authenti
 - Python
 - Django
 - Django REST Framework
-- Token Authentication
+- Django REST Framework Token Authentication
+- python-dotenv
 - SQLite for local development
 
 ## Project Structure
@@ -44,7 +45,8 @@ backend/
 │   │   ├── urls.py
 │   │   └── views.py
 │   ├── admin.py
-│   └── models.py
+│   ├── models.py
+│   └── migrations/
 │
 ├── board_app/
 │   ├── api/
@@ -53,7 +55,8 @@ backend/
 │   │   ├── urls.py
 │   │   └── views.py
 │   ├── admin.py
-│   └── models.py
+│   ├── models.py
+│   └── migrations/
 │
 ├── task_app/
 │   ├── api/
@@ -62,39 +65,41 @@ backend/
 │   │   ├── urls.py
 │   │   └── views.py
 │   ├── admin.py
-│   └── models.py
+│   ├── models.py
+│   └── migrations/
 │
+├── .env.template
+├── .gitignore
 ├── manage.py
+├── README.md
 └── requirements.txt
 ```
 
-> The local SQLite database (`db.sqlite3`) must not be committed to the repository.
+The local `.env` file, virtual environment, and SQLite database are not part of the repository.
 
 ## Installation
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/TemirlanGashimov/KinMindBackend
+git clone https://github.com/TemirlanGashimov/KinMindBackend.git
 cd KinMindBackend
 ```
-
-Replace `<YOUR-REPOSITORY-URL>` with the URL of this repository.
 
 ### 2. Create a virtual environment
 
 #### Windows
 
 ```bash
-python -m venv venv
-venv\Scripts\activate
+python -m venv .venv
+.venv\Scripts\activate
 ```
 
 #### macOS / Linux
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
 ### 3. Install dependencies
@@ -103,13 +108,37 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Apply database migrations
+### 4. Configure environment variables
+
+Create a local `.env` file based on the provided `.env.template`.
+
+#### Windows
+
+```bash
+copy .env.template .env
+```
+
+#### macOS / Linux
+
+```bash
+cp .env.template .env
+```
+
+Open the newly created `.env` file and replace the placeholder with your own Django secret key:
+
+```env
+SECRET_KEY=your-secret-key-here
+```
+
+The `.env` file contains sensitive configuration and must not be committed to version control.
+
+### 5. Apply database migrations
 
 ```bash
 python manage.py migrate
 ```
 
-### 5. Create an admin user
+### 6. Create an admin user
 
 This step is optional but recommended if you want to use the Django admin interface.
 
@@ -117,7 +146,7 @@ This step is optional but recommended if you want to use the Django admin interf
 python manage.py createsuperuser
 ```
 
-### 6. Start the development server
+### 7. Start the development server
 
 ```bash
 python manage.py runserver
@@ -180,6 +209,7 @@ Board deletion is restricted to the board owner.
 | Method | Endpoint | Description |
 |---|---|---|
 | POST | `/api/tasks/` | Create a task |
+| GET | `/api/tasks/<task_id>/` | Retrieve task details |
 | PATCH | `/api/tasks/<task_id>/` | Update a task |
 | DELETE | `/api/tasks/<task_id>/` | Delete a task |
 | GET | `/api/tasks/assigned-to-me/` | List tasks assigned to the current user |
@@ -247,6 +277,20 @@ Important permission rules include:
 - Board members and owners can access task comments.
 - Only the comment author can delete a comment.
 
+## Environment Variables
+
+The project uses environment variables for sensitive configuration.
+
+The `.env.template` file documents the required variables:
+
+```env
+SECRET_KEY=your-secret-key-here
+```
+
+Create your own `.env` file for local development.
+
+Never commit real secret keys or other sensitive credentials to the repository.
+
 ## Testing
 
 Run the Django test suite with:
@@ -255,16 +299,16 @@ Run the Django test suite with:
 python manage.py test
 ```
 
-Before submitting the project, the API should also be tested for:
+The API should also be tested for:
 
-- successful requests
-- authentication errors
-- permission errors
-- validation errors
-- missing resources
-- correct HTTP status codes
+- Successful requests
+- Authentication errors
+- Permission errors
+- Validation errors
+- Missing resources
+- Correct HTTP status codes
 
-Expected status codes include:
+Common status codes include:
 
 | Status | Meaning |
 |---|---|
@@ -272,27 +316,26 @@ Expected status codes include:
 | `201 Created` | Resource successfully created |
 | `204 No Content` | Resource successfully deleted |
 | `400 Bad Request` | Invalid request data |
-| `401 Unauthorized` | Authentication credentials missing or invalid |
+| `401 Unauthorized` | Authentication credentials are missing or invalid |
 | `403 Forbidden` | User does not have permission |
 | `404 Not Found` | Resource does not exist |
 
 ## Code Quality
 
-The project follows the defined Django/DRF project conventions:
+The project follows Django and Django REST Framework project conventions:
 
-- PEP 8 compliant Python code
+- Code structured according to PEP 8 conventions
 - Explicit serializer fields instead of `__all__`
-- Separate API folders for serializers, views, URLs, and permissions
+- Separate API modules for serializers, views, URLs, and permissions
 - Dynamic querysets using `get_queryset()`
 - Explicit permission classes
 - Resource-oriented API URLs
 - No debug `print()` statements
-- No commented-out development code
 - Clear separation between models, serializers, views, and permissions
 
-## Before Submission
+## Development Checks
 
-Before submitting the project, verify:
+Before submitting or deploying the project, run:
 
 ```bash
 python manage.py check
@@ -300,26 +343,45 @@ python manage.py makemigrations --check
 python manage.py test
 ```
 
-Also make sure that:
+`python manage.py makemigrations --check` should report:
 
-- `requirements.txt` is complete
+```text
+No changes detected
+```
+
+## Before Submission
+
+Make sure that:
+
+- `requirements.txt` is complete and up to date
 - `README.md` is up to date
+- `.env.template` is included
+- `.env` is not committed
 - `db.sqlite3` is not committed
-- the virtual environment is not committed
-- sensitive configuration is not committed
-- all required endpoints work as documented
+- `.venv` is not committed
+- No real secret keys are committed
+- Database migrations are committed
+- All required endpoints work as documented
 
 ## Git Ignore
 
-At minimum, the repository should ignore local development files such as:
+Local development files and sensitive configuration should not be committed.
+
+Important ignored files and directories include:
 
 ```gitignore
-venv/
+.env
 .venv/
+venv/
 __pycache__/
 *.pyc
 db.sqlite3
-.env
 .vscode/
 .idea/
 ```
+
+The `.env.template` file is intentionally committed because it contains only placeholder values and documents the required environment variables.
+
+## License
+
+This project was developed as part of the KanMind backend project.
