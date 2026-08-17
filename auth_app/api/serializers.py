@@ -1,12 +1,16 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from rest_framework import serializers
+
 from auth_app.models import UserProfile
 
 
-
 class RegistrationSerializer(serializers.ModelSerializer):
-
+    """
+    Serializer for user registration.
+    
+    Validates and creates a new user account with profile.
+    """
     fullname = serializers.CharField()
     repeated_password = serializers.CharField(write_only=True)
 
@@ -18,6 +22,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, attrs):
+        """Validate password matching and email uniqueness."""
         if attrs['password'] != attrs['repeated_password']:
             raise serializers.ValidationError(
                 {'password': 'Passwords must match.'}
@@ -27,13 +32,14 @@ class RegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {'email': 'Email is already in use.'}
             )
-        
+
         return attrs
 
     def create(self, validated_data):
+        """Create new user and associated profile."""
         user = User.objects.create_user(
-            username=self.validated_data['email'],
-            email=self.validated_data['email'],
+            username=validated_data['email'],
+            email=validated_data['email'],
             password=validated_data['password'],
         )
 
@@ -45,12 +51,18 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
+    """
+    Serializer for user login.
+    
+    Validates email and password credentials.
+    """
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        email = attrs["email"]
-        password = attrs["password"]
+        """Authenticate user with provided credentials."""
+        email = attrs['email']
+        password = attrs['password']
 
         user = authenticate(
             username=email,
@@ -59,8 +71,8 @@ class LoginSerializer(serializers.Serializer):
 
         if not user:
             raise serializers.ValidationError(
-                {"detail": "Invalid email or password."}
+                {'detail': 'Invalid email or password.'}
             )
 
-        attrs["user"] = user
+        attrs['user'] = user
         return attrs
