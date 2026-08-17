@@ -1,4 +1,12 @@
+"""
+Authentication API URL patterns.
+
+Endpoints:
+    - POST /api/registration/ - Register a new user
+    - POST /api/login/ - Login user and get authentication token
+"""
 from django.urls import path
+
 from .views import RegistrationView, LoginView
 
 urlpatterns = [
