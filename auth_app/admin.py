@@ -13,9 +13,11 @@ class UserProfileAdmin(admin.ModelAdmin):
     def get_email(self, obj):
         """Display user email."""
         return obj.user.email
+    
     get_email.short_description = 'Email'
 
     def get_username(self, obj):
         """Display username."""
         return obj.user.username
+    
     get_username.short_description = 'Username'
