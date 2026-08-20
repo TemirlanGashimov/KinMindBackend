@@ -16,7 +16,7 @@ The backend is built with Django and Django REST Framework and provides authenti
 - Task status and priority management
 - Due dates
 - Comments on tasks
-- Permission-based access control
+- Object-level permission-based access control
 - Dynamically calculated board statistics
 - Django admin interface
 
@@ -211,15 +211,19 @@ Authorization: Token <your-token>
 | DELETE | `/api/boards/<board_id>/` | Delete a board |
 | GET | `/api/email-check/` | Find a user by email |
 
-Users can access boards they own or are members of.
+The board list only contains boards where the authenticated user is the owner or a member.
+
+Board details can only be accessed by the board owner or board members.
+
+If a board exists but the authenticated user does not have access to it, the API returns `403 Forbidden`.
+
+If the requested board does not exist, the API returns `404 Not Found`.
 
 Board deletion is restricted to the board owner.
 
 ### Board Summary
 
-Board list and creation responses include summary information about the board.
-
-The board statistics are dynamically calculated from the current board members and tasks.
+Board list and board creation responses include dynamically calculated summary information.
 
 Example response:
 
@@ -235,13 +239,76 @@ Example response:
 }
 ```
 
-The calculated fields are:
+The summary fields are:
 
 - `member_count` - Number of members assigned to the board
 - `ticket_count` - Total number of tasks belonging to the board
 - `tasks_to_do_count` - Number of tasks with the `todo` status
 - `tasks_high_prio_count` - Number of tasks with `high` priority
 - `owner_id` - ID of the board owner
+
+The board statistics are calculated dynamically from the current board members and tasks.
+
+### Board Details
+
+A successful `GET /api/boards/<board_id>/` request returns detailed board information including members and tasks.
+
+The response can include:
+
+- `id`
+- `title`
+- `owner_id`
+- `members`
+- `tasks`
+
+Member information includes the user's ID, email address, and full name.
+
+Task information includes task details such as title, description, status, priority, assignee, reviewer, due date, and comment count.
+
+### Board Update
+
+Board updates are performed using:
+
+```text
+PATCH /api/boards/<board_id>/
+```
+
+The request can contain fields such as:
+
+```json
+{
+  "title": "Changed title",
+  "members": [3, 4]
+}
+```
+
+A successful update returns the updated board together with detailed owner and member information.
+
+Example response:
+
+```json
+{
+  "id": 9,
+  "title": "Changed title",
+  "owner_data": {
+    "id": 3,
+    "email": "max.mustermann@example.com",
+    "fullname": "Max Mustermann"
+  },
+  "members_data": [
+    {
+      "id": 3,
+      "email": "max.mustermann@example.com",
+      "fullname": "Max Mustermann"
+    },
+    {
+      "id": 4,
+      "email": "test.user@example.com",
+      "fullname": "Test User"
+    }
+  ]
+}
+```
 
 ### Tasks
 
@@ -309,7 +376,10 @@ The API uses authentication and object-level permissions.
 Important permission rules include:
 
 - Only authenticated users can access protected endpoints.
-- Users can access boards they own or belong to.
+- Board lists only include boards owned by the user or boards where the user is a member.
+- Board details can only be accessed by the board owner or board members.
+- Accessing an existing board without permission returns `403 Forbidden`.
+- Requesting a board that does not exist returns `404 Not Found`.
 - Only the board owner can delete a board.
 - Tasks can only be created in accessible boards.
 - Only the task creator or board owner can delete a task.
@@ -346,6 +416,7 @@ The API should also be tested for:
 - Validation errors
 - Missing resources
 - Correct HTTP status codes
+- Correct response structures
 
 Common status codes include:
 
@@ -356,8 +427,8 @@ Common status codes include:
 | `204 No Content` | Resource successfully deleted |
 | `400 Bad Request` | Invalid request data |
 | `401 Unauthorized` | Authentication credentials are missing or invalid |
-| `403 Forbidden` | User does not have permission |
-| `404 Not Found` | Resource does not exist |
+| `403 Forbidden` | Resource exists, but the user does not have permission |
+| `404 Not Found` | Requested resource does not exist |
 
 ## Code Quality
 
@@ -368,6 +439,8 @@ The project follows Django and Django REST Framework project conventions:
 - Separate API modules for serializers, views, URLs, and permissions
 - Dynamic querysets using `get_queryset()`
 - Explicit permission classes
+- Object-level permissions for protected resources
+- Separate serializers for request validation and API response representation where required
 - Resource-oriented API URLs
 - No debug `print()` statements
 - Clear separation between models, serializers, views, and permissions
@@ -401,6 +474,8 @@ Make sure that:
 - No real secret keys are committed
 - Database migrations are committed
 - All required endpoints work as documented
+- Success responses match the required API response structures
+- Permission errors return the expected HTTP status codes
 
 ## Git Ignore
 
