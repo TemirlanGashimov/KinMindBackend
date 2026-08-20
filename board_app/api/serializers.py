@@ -8,7 +8,7 @@ from task_app.models import Task
 class BoardMemberSerializer(serializers.ModelSerializer):
     """
     Serializer for displaying board member information.
-    
+
     Displays user id, email, and full name from profile.
     """
     fullname = serializers.CharField(source='profile.fullname')
@@ -21,7 +21,7 @@ class BoardMemberSerializer(serializers.ModelSerializer):
 class BoardTaskSerializer(serializers.ModelSerializer):
     """
     Serializer for displaying tasks within a board.
-    
+
     Includes task details with member information and comment count.
     """
     assignee = BoardMemberSerializer(read_only=True)
@@ -43,7 +43,7 @@ class BoardTaskSerializer(serializers.ModelSerializer):
 class BoardSerializer(serializers.ModelSerializer):
     """
     Serializer for listing boards.
-    
+
     Provides summary information about boards including
     dynamically calculated member and task counts.
     """
@@ -80,20 +80,8 @@ class BoardSerializer(serializers.ModelSerializer):
 class BoardCreateSerializer(serializers.ModelSerializer):
     """
     Serializer for creating new boards.
-    
+
     Accepts title and members for board creation.
-    """
-
-    class Meta:
-        model = Board
-        fields = ['title', 'members']
-
-
-class BoardUpdateSerializer(serializers.ModelSerializer):
-    """
-    Serializer for updating board information.
-    
-    Allows updating title and members.
     """
 
     class Meta:
@@ -104,7 +92,7 @@ class BoardUpdateSerializer(serializers.ModelSerializer):
 class BoardDetailSerializer(serializers.ModelSerializer):
     """
     Serializer for retrieving detailed board information.
-    
+
     Includes members and tasks associated with the board.
     """
     members = BoardMemberSerializer(many=True, read_only=True)
@@ -113,3 +101,33 @@ class BoardDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Board
         fields = ['id', 'title', 'owner_id', 'members', 'tasks']
+
+
+class BoardUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating board information.
+
+    Allows updating title and members.
+    """
+
+    class Meta:
+        model = Board
+        fields = ['title', 'members']
+
+
+class BoardUpdateResponseSerializer(serializers.ModelSerializer):
+    """
+    Serializer for board update responses.
+
+    Returns the updated board with owner and member information.
+    """
+    owner_data = BoardMemberSerializer(source='owner', read_only=True)
+    members_data = BoardMemberSerializer(
+        source='members',
+        many=True,
+        read_only=True
+    )
+
+    class Meta:
+        model = Board
+        fields = ['id', 'title', 'owner_data', 'members_data']
