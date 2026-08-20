@@ -46,6 +46,19 @@ class BoardListCreateView(generics.ListCreateAPIView):
         """Create board and add current user as owner and member."""
         board = serializer.save(owner=self.request.user)
         board.members.add(self.request.user)
+        return board
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        board = self.perform_create(serializer)
+        response_serializer = BoardSerializer(board)
+
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_201_CREATED
+        )
 
 
 class BoardDetailView(generics.RetrieveUpdateDestroyAPIView):
