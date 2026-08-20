@@ -17,6 +17,7 @@ The backend is built with Django and Django REST Framework and provides authenti
 - Due dates
 - Comments on tasks
 - Permission-based access control
+- Dynamically calculated board statistics
 - Django admin interface
 
 ## Tech Stack
@@ -172,6 +173,14 @@ After creating a superuser, the Django admin interface is available at:
 http://127.0.0.1:8000/admin/
 ```
 
+The admin interface provides management views for:
+
+- Users and user profiles
+- Authentication tokens
+- Boards
+- Tasks
+- Comments
+
 ## Authentication
 
 Protected endpoints require token authentication.
@@ -202,7 +211,37 @@ Authorization: Token <your-token>
 | DELETE | `/api/boards/<board_id>/` | Delete a board |
 | GET | `/api/email-check/` | Find a user by email |
 
+Users can access boards they own or are members of.
+
 Board deletion is restricted to the board owner.
+
+### Board Summary
+
+Board list and creation responses include summary information about the board.
+
+The board statistics are dynamically calculated from the current board members and tasks.
+
+Example response:
+
+```json
+{
+  "id": 9,
+  "title": "Board POST Test",
+  "member_count": 2,
+  "ticket_count": 0,
+  "tasks_to_do_count": 0,
+  "tasks_high_prio_count": 0,
+  "owner_id": 3
+}
+```
+
+The calculated fields are:
+
+- `member_count` - Number of members assigned to the board
+- `ticket_count` - Total number of tasks belonging to the board
+- `tasks_to_do_count` - Number of tasks with the `todo` status
+- `tasks_high_prio_count` - Number of tasks with `high` priority
+- `owner_id` - ID of the board owner
 
 ### Tasks
 
