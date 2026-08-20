@@ -44,8 +44,30 @@ class BoardSerializer(serializers.ModelSerializer):
     """
     Serializer for listing boards.
     
-    Provides summary information about boards.
+    Provides summary information about boards including
+    dynamically calculated member and task counts.
     """
+
+    member_count = serializers.SerializerMethodField()
+    ticket_count = serializers.SerializerMethodField()
+    tasks_to_do_count = serializers.SerializerMethodField()
+    tasks_high_prio_count = serializers.SerializerMethodField()
+
+    def get_member_count(self, obj):
+        """Return the number of members in the board."""
+        return obj.members.count()
+
+    def get_ticket_count(self, obj):
+        """Return the total number of tasks in the board."""
+        return obj.tasks.count()
+
+    def get_tasks_to_do_count(self, obj):
+        """Return the number of tasks with todo status."""
+        return obj.tasks.filter(status='todo').count()
+
+    def get_tasks_high_prio_count(self, obj):
+        """Return the number of high priority tasks."""
+        return obj.tasks.filter(priority='high').count()
 
     class Meta:
         model = Board
