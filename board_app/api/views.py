@@ -5,23 +5,23 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from board_app.models import Board
-from .permissions import IsBoardOwner
+from .permissions import IsBoardOwner, IsBoardMemberOrOwner
 from .serializers import (
-    BoardSerializer, BoardCreateSerializer,
-    BoardUpdateSerializer, BoardDetailSerializer,
-    BoardMemberSerializer
+    BoardCreateSerializer, BoardDetailSerializer,
+    BoardMemberSerializer, BoardSerializer,
+    BoardUpdateResponseSerializer, BoardUpdateSerializer,
 )
 
 
 class BoardListCreateView(generics.ListCreateAPIView):
     """
     API endpoint for listing and creating boards.
-    
+
     GET:
         - Returns boards where user is owner or member
         - Status: 200 OK
         - Requires: IsAuthenticated
-    
+
     POST:
         - Creates a new board with current user as owner
         - Status: 201 CREATED
@@ -64,17 +64,17 @@ class BoardListCreateView(generics.ListCreateAPIView):
 class BoardDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
     API endpoint for retrieving, updating, and deleting boards.
-    
+
     GET:
         - Returns detailed board information with members and tasks
         - Status: 200 OK
         - Requires: IsAuthenticated
-    
+
     PATCH:
         - Updates board title and members
         - Status: 200 OK
         - Requires: IsAuthenticated
-    
+
     DELETE:
         - Deletes board (only by owner)
         - Status: 204 NO CONTENT
@@ -86,14 +86,11 @@ class BoardDetailView(generics.RetrieveUpdateDestroyAPIView):
         """Require ownership only for delete operations."""
         if self.request.method == 'DELETE':
             return [IsAuthenticated(), IsBoardOwner()]
-        return [IsAuthenticated()]
+        return [IsAuthenticated(),  IsBoardMemberOrOwner()]
 
     def get_queryset(self):
-        """Return boards accessible to current user."""
-        return Board.objects.filter(
-            Q(owner=self.request.user) |
-            Q(members=self.request.user)
-        ).distinct()
+        """Return all boards for object-level permission checks."""
+        return Board.objects.all()
 
     def get_serializer_class(self):
         """Use different serializer for PATCH requests."""
@@ -101,11 +98,30 @@ class BoardDetailView(generics.RetrieveUpdateDestroyAPIView):
             return BoardUpdateSerializer
         return BoardDetailSerializer
 
+    def partial_update(self, request, *args, **kwargs):
+        """Update board and return detailed board information."""
+        board = self.get_object()
+
+        serializer = self.get_serializer(
+            board,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        board = serializer.save()
+
+        response_serializer = BoardUpdateResponseSerializer(board)
+
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_200_OK
+        )
+
 
 class EmailCheckView(generics.GenericAPIView):
     """
     API endpoint for searching users by email.
-    
+
     GET:
         - Searches user by email parameter
         - Query params: email (required)
