@@ -310,7 +310,7 @@ Example response:
 }
 ```
 
-### Tasks
+## Tasks
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -323,9 +323,58 @@ Example response:
 
 Tasks can only be created inside boards that the authenticated user is allowed to access.
 
+When creating a task:
+
+- If the specified board exists and the authenticated user has access to it, the task can be created.
+- If the specified board exists but the authenticated user does not have access to it, the API returns `403 Forbidden`.
+- If the specified board does not exist, the API returns `404 Not Found`.
+- Invalid task data returns `400 Bad Request`.
+
+Task details and task updates are protected by object-level board permissions.
+
+For task access and updates:
+
+- Board owners and board members can access permitted tasks.
+- If the task exists but the authenticated user does not have access to its board, the API returns `403 Forbidden`.
+- If the requested task does not exist, the API returns `404 Not Found`.
+
 Task deletion is restricted to the task creator or the board owner.
 
-### Comments
+For task deletion:
+
+- The task creator or board owner can delete the task.
+- If the task exists but the authenticated user is not allowed to delete it, the API returns `403 Forbidden`.
+- If the requested task does not exist, the API returns `404 Not Found`.
+- A successful deletion returns `204 No Content`.
+
+### Task Response
+
+A successful task response can include:
+
+```json
+{
+  "id": 1,
+  "board": 7,
+  "title": "Example Task",
+  "description": "Example description",
+  "status": "todo",
+  "priority": "medium",
+  "assignee": {
+    "id": 3,
+    "email": "max.mustermann@example.com",
+    "fullname": "Max Mustermann"
+  },
+  "reviewer": {
+    "id": 4,
+    "email": "test.user@example.com",
+    "fullname": "Test User"
+  },
+  "due_date": "2026-08-30",
+  "comments_count": 0
+}
+```
+
+## Comments
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -334,6 +383,10 @@ Task deletion is restricted to the task creator or the board owner.
 | DELETE | `/api/tasks/<task_id>/comments/<comment_id>/` | Delete a comment |
 
 Users must have access to the corresponding board to view or create task comments.
+
+If the requested task does not exist, the API returns `404 Not Found`.
+
+If the task exists but the authenticated user does not have permission to access its board, the API returns `403 Forbidden`.
 
 Only the author of a comment can delete that comment.
 
@@ -382,9 +435,37 @@ Important permission rules include:
 - Requesting a board that does not exist returns `404 Not Found`.
 - Only the board owner can delete a board.
 - Tasks can only be created in accessible boards.
+- Creating a task for an existing but inaccessible board returns `403 Forbidden`.
+- Creating a task for a board that does not exist returns `404 Not Found`.
+- Board owners and board members can access and update permitted tasks.
+- Accessing or updating an existing task without board permission returns `403 Forbidden`.
+- Requesting a task that does not exist returns `404 Not Found`.
 - Only the task creator or board owner can delete a task.
+- Attempting to delete an existing task without permission returns `403 Forbidden`.
 - Board members and owners can access task comments.
 - Only the comment author can delete a comment.
+
+## HTTP Status Codes
+
+The API uses standard HTTP status codes.
+
+| Status | Meaning |
+|---|---|
+| `200 OK` | Request completed successfully |
+| `201 Created` | Resource successfully created |
+| `204 No Content` | Resource successfully deleted |
+| `400 Bad Request` | Request data is invalid |
+| `401 Unauthorized` | Authentication credentials are missing or invalid |
+| `403 Forbidden` | Resource exists, but the authenticated user does not have permission |
+| `404 Not Found` | Requested resource does not exist |
+| `500 Internal Server Error` | Unexpected server error |
+
+A key distinction in the API is:
+
+```text
+403 Forbidden = the resource exists, but the user is not allowed to access or modify it
+404 Not Found  = the requested resource does not exist
+```
 
 ## Environment Variables
 
@@ -408,7 +489,9 @@ Run the Django test suite with:
 python manage.py test
 ```
 
-The API should also be tested for:
+The API can additionally be tested manually using Postman.
+
+Important test cases include:
 
 - Successful requests
 - Authentication errors
@@ -417,18 +500,23 @@ The API should also be tested for:
 - Missing resources
 - Correct HTTP status codes
 - Correct response structures
+- Board access with owner credentials
+- Board access with member credentials
+- Board access with unrelated user credentials
+- Task access with permitted and unrelated users
+- Task creation with existing and non-existing boards
+- Task updates with permitted and unrelated users
+- Task deletion with permitted and unrelated users
 
-Common status codes include:
+Important permission and resource tests include:
 
-| Status | Meaning |
-|---|---|
-| `200 OK` | Successful request |
-| `201 Created` | Resource successfully created |
-| `204 No Content` | Resource successfully deleted |
-| `400 Bad Request` | Invalid request data |
-| `401 Unauthorized` | Authentication credentials are missing or invalid |
-| `403 Forbidden` | Resource exists, but the user does not have permission |
-| `404 Not Found` | Requested resource does not exist |
+```text
+Existing resource + permission     -> expected success response
+Existing resource + no permission  -> 403 Forbidden
+Non-existing resource              -> 404 Not Found
+Invalid request data               -> 400 Bad Request
+Missing/invalid authentication     -> 401 Unauthorized
+```
 
 ## Code Quality
 
@@ -441,6 +529,7 @@ The project follows Django and Django REST Framework project conventions:
 - Explicit permission classes
 - Object-level permissions for protected resources
 - Separate serializers for request validation and API response representation where required
+- Dynamically calculated board statistics
 - Resource-oriented API URLs
 - No debug `print()` statements
 - Clear separation between models, serializers, views, and permissions
@@ -475,7 +564,9 @@ Make sure that:
 - Database migrations are committed
 - All required endpoints work as documented
 - Success responses match the required API response structures
-- Permission errors return the expected HTTP status codes
+- Permission errors return `403 Forbidden`
+- Missing resources return `404 Not Found`
+- Validation errors return `400 Bad Request`
 
 ## Git Ignore
 
