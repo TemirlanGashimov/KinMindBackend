@@ -1,4 +1,3 @@
-from django.db.models import Q
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied, NotFound
 from rest_framework.permissions import IsAuthenticated
@@ -17,7 +16,7 @@ from .serializers import (
 class TaskCreateView(generics.CreateAPIView):
     """
     API endpoint for creating tasks.
-    
+
     POST:
         - Creates a new task in a board
         - Validates user has access to the board
@@ -27,32 +26,30 @@ class TaskCreateView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = TaskCreateSerializer
 
-    def perform_create(self, serializer):
-        """Validate board access and create task."""
-        board = serializer.validated_data['board']
-        self._validate_board_access(board)
-        return serializer.save(created_by=self.request.user)
+    def create(self, request, *args, **kwargs):
+        """Handle task creation request."""
+        board_id = request.data.get('board')
+        board = Board.objects.filter(id=board_id).first()
 
-    def _validate_board_access(self, board):
-        """Check if user has access to board."""
-        has_access = Board.objects.filter(
-            Q(id=board.id),
-            Q(owner=self.request.user) |
-            Q(members=self.request.user)
-        ).exists()
+        if not board:
+            raise NotFound('Board not found.')
+
+        has_access = (
+            board.owner == request.user
+            or board.members.filter(id=request.user.id).exists()
+        )
 
         if not has_access:
             raise PermissionDenied(
-                'You do not have permission to create a task in this board.'
+                'You do not have permission to access this board.'
             )
 
-    def create(self, request, *args, **kwargs):
-        """Handle task creation request."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        task = self.perform_create(serializer)
+        task = serializer.save(created_by=request.user)
         response_serializer = TaskSerializer(task)
+
         return Response(
             response_serializer.data,
             status=status.HTTP_201_CREATED
@@ -62,17 +59,17 @@ class TaskCreateView(generics.CreateAPIView):
 class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
     API endpoint for retrieving, updating, and deleting tasks.
-    
+
     GET:
         - Returns task details
         - Status: 200 OK
         - Requires: IsAuthenticated
-    
+
     PATCH:
         - Updates task information
         - Status: 200 OK
         - Requires: IsAuthenticated
-    
+
     DELETE:
         - Deletes task (only by creator or board owner)
         - Status: 204 NO CONTENT
@@ -89,14 +86,11 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
                 IsTaskCreatorOrBoardOwner()
             ]
 
-        return [IsAuthenticated()]
+        return [IsAuthenticated(), IsBoardMemberOrOwner()]
 
     def get_queryset(self):
-        """Return tasks accessible to current user."""
-        return Task.objects.filter(
-            Q(board__owner=self.request.user) |
-            Q(board__members=self.request.user)
-        ).distinct()
+        """Return all tasks for object-level permission checks."""
+        return Task.objects.all()
 
     def partial_update(self, request, *args, **kwargs):
         """Handle task update request."""
@@ -120,7 +114,7 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
 class AssignedToMeView(generics.ListAPIView):
     """
     API endpoint for listing tasks assigned to current user.
-    
+
     GET:
         - Returns list of tasks assigned to the current user
         - Status: 200 OK
@@ -139,7 +133,7 @@ class AssignedToMeView(generics.ListAPIView):
 class ReviewingView(generics.ListAPIView):
     """
     API endpoint for listing tasks under review by current user.
-    
+
     GET:
         - Returns list of tasks where user is reviewer
         - Status: 200 OK
@@ -158,12 +152,12 @@ class ReviewingView(generics.ListAPIView):
 class CommentListCreateAPIView(generics.ListCreateAPIView):
     """
     API endpoint for listing and creating task comments.
-    
+
     GET:
         - Returns list of comments for a task
         - Status: 200 OK
         - Requires: IsAuthenticated, IsBoardMemberOrOwner
-    
+
     POST:
         - Creates a new comment on a task
         - Status: 201 CREATED
@@ -200,7 +194,7 @@ class CommentListCreateAPIView(generics.ListCreateAPIView):
 class CommentDeleteView(generics.DestroyAPIView):
     """
     API endpoint for deleting comments.
-    
+
     DELETE:
         - Deletes a comment (only by author)
         - Status: 204 NO CONTENT
